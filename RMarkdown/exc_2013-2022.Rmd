@@ -1,0 +1,117 @@
+---
+title: "Exchange Rates 2013-2022"
+author: "Lim Zhi Chao"
+date: "`r format(Sys.time(),'%B %Y')`"
+output: html_document
+params:
+  curr: 'JPY'
+  yearly: '2022' # YYYY format
+  monthly: 'July' # Full name
+  monthly_year: '2022' # YYYY format
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Data contains exchange rates for 1 SGD from year 2013-2022. Data in the Excel file was obtained via web scrapping of [X-RATES website](https://www.x-rates.com/).
+Currency and date parameters can be adjusted in the YAML header.
+
+## Main libraries used:
+
+1. `readxl` for importing of data
+2. `dplyr` for data manipulation
+3. `ggplot2` for data visualization
+
+```{r load libraries, include=FALSE}
+library(readxl)
+library(tidyverse)
+
+months=c("January","Febuary","March","April","May","June","July","August","September","October","November","December" )
+
+```
+
+### Importing Data
+
+```{r importing data}
+
+filename = "../SGD Exchange Rates 2013-2022.xlsx"
+sheets = lapply( excel_sheets(filename), function(x) read_excel(filename, col_names=TRUE, sheet=x))
+all_exc = list_rbind(sheets)
+
+```
+
+### SGD/`r params$curr` Exchange Rates
+
+#### Extracting SGD/`r params$curr` from data
+
+```{r extract}
+
+# Change currency rates to numeric values and dates to character values
+# Create new column with concatenated date
+# Select new date column and relevant currency exchange rates
+# Rename exchange rate column for ease of manipulation later
+exc = all_exc %>%
+  mutate_if( is.character, as.numeric ) %>%
+  mutate_at( vars(c(year,month,day)), as.character ) %>%
+  mutate( date = str_c( year,month,day,sep='-') ) %>%
+  select( date, contains(params$curr) ) %>%
+  rename_with( function(x) x=params$curr, starts_with("SGD") )
+
+# Ordering the dates for graph plotting
+exc$date = factor(exc$date, levels=exc$date )
+
+```
+
+#### Year of `r params$year`
+
+```{r yearly}
+
+# Creating axis breaks
+ticks=c()
+for (i in as.character(1:12)){
+  ticks = c( ticks, str_c( params$yearly, i, "1", sep="-") )
+}
+
+# Filtering out relevant dates
+year = exc %>%
+  filter( str_detect(date,pattern=params$year) )
+
+# Plotting of graph
+ggplot( year, aes( x=date, y=.data[[params$curr]] ) ) +
+  
+  labs( title=str_c("SGD to ",params$curr," Exchange Rates in ",params$year),
+        x="Months", y="Rates" ) +
+  
+  theme( axis.text.x = element_text(angle=45) ) +
+  
+  scale_x_discrete( breaks=ticks, labels=months ) +
+  
+  geom_point(size=1, alpha=0.3)
+
+```
+
+#### Year of `r params$monthly_year`, Month of `r params$monthly`
+
+```{r monthly}
+
+# Obtain numeric value of month since it is given as character in params
+index = as.character(which( months == params$monthly ))
+date_str = str_c( params$monthly_year, index, sep = "-" )
+
+# Filter out relevant dates
+month = exc %>%
+  filter( str_detect( date, pattern=date_str) )
+
+# Plotting of graph
+ggplot( month, aes(x=date, y=.data[[params$curr]]) ) +
+  
+  labs( title=str_c("SGD to ",params$curr," Exchange Rates in ", str_c(params$monthly,params$monthly_year,sep=" ")), x="Days", y="Rates" ) +
+  
+  scale_x_discrete( breaks=month$date, labels=1:length(month$date) ) +
+  
+  geom_point( size=1, alpha=0.5 )+
+  
+  geom_line( aes(group=1) )
+
+```
