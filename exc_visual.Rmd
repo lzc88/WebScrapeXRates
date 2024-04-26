@@ -1,5 +1,5 @@
 ---
-title: "Exchange Rates 2013-2022"
+title: "Exchange Rates Visualization"
 author: "Lim Zhi Chao"
 date: "`r format(Sys.time(),'%B %Y')`"
 output: html_document
