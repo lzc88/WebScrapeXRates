@@ -1,21 +1,29 @@
 ---
-title: "Exchange Rates Visualization"
-author: "Lim Zhi Chao"
+title: "Yearly Exchange Rates Visualization"
+author: "Zhi Chao"
 date: "`r format(Sys.time(),'%B %Y')`"
 output: html_document
 params:
-  curr: 'JPY'
-  yearly: '2022' # YYYY format
-  monthly: 'July' # Full name
-  monthly_year: '2022' # YYYY format
+  from_curr: 'CNY'
+  to_curr: 'SGD'
+  year: '2020' # YYYY format
+  monthly: 'August' # Full name
+  monthly_year: '2020' # YYYY format
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Data contains exchange rates for 1 SGD from year 2013-2022. Data in the Excel file was obtained via web scrapping of [X-RATES website](https://www.x-rates.com/).
+Data in the Excel file was obtained via web scraping of [X-RATES website](https://www.x-rates.com/).
+
+# Important
+
+To visualize exchange rates by year/month.
+
 Currency and date parameters can be adjusted in the YAML header.
+
+Change the file path below under **Importing Data**
 
 ## Main libraries used:
 
@@ -35,15 +43,15 @@ months=c("January","Febuary","March","April","May","June","July","August","Septe
 
 ```{r importing data}
 
-filename = "../SGD Exchange Rates 2013-2022.xlsx"
+filename = "./CNY Exchange Rates 2014-2023.xlsx"
 sheets = lapply( excel_sheets(filename), function(x) read_excel(filename, col_names=TRUE, sheet=x))
 all_exc = list_rbind(sheets)
 
 ```
 
-### SGD/`r params$curr` Exchange Rates
+### `r params$from_curr`/`r params$to_curr` Exchange Rates
 
-#### Extracting SGD/`r params$curr` from data
+#### Extracting `r params$from_curr`/`r params$to_curr` from data
 
 ```{r extract}
 
@@ -55,8 +63,8 @@ exc = all_exc %>%
   mutate_if( is.character, as.numeric ) %>%
   mutate_at( vars(c(year,month,day)), as.character ) %>%
   mutate( date = str_c( year,month,day,sep='-') ) %>%
-  select( date, contains(params$curr) ) %>%
-  rename_with( function(x) x=params$curr, starts_with("SGD") )
+  select( date, contains(params$to_curr) ) %>%
+  rename_with( function(x) x=params$to_curr, starts_with(params$from_curr) )
 
 # Ordering the dates for graph plotting
 exc$date = factor(exc$date, levels=exc$date )
@@ -70,7 +78,7 @@ exc$date = factor(exc$date, levels=exc$date )
 # Creating axis breaks
 ticks=c()
 for (i in as.character(1:12)){
-  ticks = c( ticks, str_c( params$yearly, i, "1", sep="-") )
+  ticks = c( ticks, str_c( params$year, i, "1", sep="-") )
 }
 
 # Filtering out relevant dates
@@ -78,9 +86,9 @@ year = exc %>%
   filter( str_detect(date,pattern=params$year) )
 
 # Plotting of graph
-ggplot( year, aes( x=date, y=.data[[params$curr]] ) ) +
+ggplot( year, aes( x=date, y=.data[[params$to_curr]] ) ) +
   
-  labs( title=str_c("SGD to ",params$curr," Exchange Rates in ",params$year),
+  labs( title=str_c(params$from_curr," to ",params$to_curr," Exchange Rates in ",params$year),
         x="Months", y="Rates" ) +
   
   theme( axis.text.x = element_text(angle=45) ) +
@@ -104,9 +112,9 @@ month = exc %>%
   filter( str_detect( date, pattern=date_str) )
 
 # Plotting of graph
-ggplot( month, aes(x=date, y=.data[[params$curr]]) ) +
+ggplot( month, aes(x=date, y=.data[[params$to_curr]]) ) +
   
-  labs( title=str_c("SGD to ",params$curr," Exchange Rates in ", str_c(params$monthly,params$monthly_year,sep=" ")), x="Days", y="Rates" ) +
+  labs( title=str_c(params$from_curr," to ",params$to_curr," Exchange Rates in ", str_c(params$monthly,params$monthly_year,sep=" ")), x="Days", y="Rates" ) +
   
   scale_x_discrete( breaks=month$date, labels=1:length(month$date) ) +
   
